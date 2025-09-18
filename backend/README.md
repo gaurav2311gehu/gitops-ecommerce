@@ -1,1 +1,1 @@
-Complete E2E project
+Complete E2E project of DevOps
