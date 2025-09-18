@@ -72,7 +72,7 @@ pipeline {
         }
         stage('Notify') {
             steps {
-                echo '✅ Deployment Triggered via ArgoCD!'
+                echo 'Deployment Triggered via ArgoCD!'
             }
         }
     }
