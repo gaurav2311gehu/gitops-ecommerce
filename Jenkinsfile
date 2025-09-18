@@ -1,50 +1,76 @@
 pipeline {
     agent any
     environment {
-        DOCKER_HUB = "<dockerhub-username>"
-        IMAGE_NAME = "ecommerce-backend"
+        DOCKER_HUB = "gauravsaini2311"
+        IMAGE_NAME_BACKEND = "ecommerce-backend"
+        IMAGE_NAME_FRONTEND = "ecommerce-frontend"
     }
     stages {
         stage('Checkout') {
-            steps { git branch: 'main', url: 'https://github.com/<username>/ecommerce-backend.git' }
+            steps { git branch: 'main', url: 'https://github.com/gaurav2311gehu/gitops-ecommerce.git' }
         }
-        stage('Build & Test') {
+
+        // ---------------- Backend ----------------
+        stage('Build & Test Backend') {
             steps {
-                sh 'mvn clean package'
+                dir('backend') {
+                    sh 'mvn clean verify'   // verify = compile + test + package
+                }
             }
         }
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh 'mvn sonar:sonar'
+                dir('backend') {
+                    withSonarQubeEnv('SonarQube') {
+                        sh 'mvn sonar:sonar'
+                    }
                 }
             }
         }
-        stage('Build Docker Image') {
+        stage('Build & Push Backend Docker Image') {
             steps {
-                sh "docker build -t $DOCKER_HUB/$IMAGE_NAME:latest ."
-                sh "docker push $DOCKER_HUB/$IMAGE_NAME:latest"
+                dir('backend') {
+                    sh "docker build -t $DOCKER_HUB/$IMAGE_NAME_BACKEND:latest ."
+                    sh "docker push $DOCKER_HUB/$IMAGE_NAME_BACKEND:latest"
+                }
             }
         }
-        stage('Update ArgoCD Manifest') {
+
+        // ---------------- Frontend ----------------
+        stage('Install Frontend Deps') {
+            steps {
+                dir('frontend') {
+                    sh 'npm install'
+                }
+            }
+        }
+        stage('Test Frontend') {
+            steps {
+                dir('frontend') {
+                    sh 'npm test -- --watchAll=false'   // Jest tests, CI-friendly
+                }
+            }
+        }
+        stage('Build & Push Frontend Docker Image') {
+            steps {
+                dir('frontend') {
+                    sh 'npm run build'
+                    sh "docker build -t $DOCKER_HUB/$IMAGE_NAME_FRONTEND:latest ."
+                    sh "docker push $DOCKER_HUB/$IMAGE_NAME_FRONTEND:latest"
+                }
+            }
+        }
+
+        // ---------------- GitOps Deploy ----------------
+        stage('Update ArgoCD Manifests') {
             steps {
                 sh "argocd-image-updater --update"
             }
         }
         stage('Notify') {
             steps {
-                echo 'Deployment Triggered!'
+                echo '✅ Deployment Triggered via ArgoCD!'
             }
-        }
-    }
-}
-stage('Build Frontend') {
-    steps {
-        dir('frontend') {
-            sh 'npm install'
-            sh 'npm run build'
-            sh "docker build -t $DOCKER_HUB/ecommerce-frontend:latest ."
-            sh "docker push $DOCKER_HUB/ecommerce-frontend:latest"
         }
     }
 }

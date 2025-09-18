@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ecommerce-backend
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: backend=gauravsaini2311/ecommerce-backend:latest
 spec:
   replicas: 2
   selector:
