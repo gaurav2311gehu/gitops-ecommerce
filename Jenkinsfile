@@ -38,7 +38,7 @@ pipeline {
             }
         }
 
-        // ---------------- Frontend ----
+        // ---------------- Frontend ----------------
         stage('Install Frontend Deps') {
             steps {
                 dir('frontend') {
