@@ -53,19 +53,20 @@ pipeline {
         }
 
         // ---------------- Deploy to Minikube ----------------
-        stage('Deploy to Minikube') {
-            steps {
-                dir('kubernetes') { // 👈 yahan sahi folder ka naam use kar
-                    bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f namespace.yaml || echo Namespace already exists'
-                    bat "kubectl --kubeconfig=%KUBECONFIG% apply -f backend-deployment.yaml"
-                    bat "kubectl --kubeconfig=%KUBECONFIG% apply -f backend-service.yaml"
-                    bat "kubectl --kubeconfig=%KUBECONFIG% apply -f frontend-deployment.yaml"
-                    bat "kubectl --kubeconfig=%KUBECONFIG% apply -f frontend-service.yaml"
-                    bat "kubectl --kubeconfig=%KUBECONFIG% apply -f ingress.yaml"
-                }
-            }
+        // ---------------- Deploy to Minikube ----------------
+stage('Deploy to Minikube') {
+    steps {
+        dir('kubernetes') {
+            bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f namespace.yaml || echo Namespace already exists'
+            bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f backend-deployment.yaml'
+            bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f backend-service.yaml'
+            bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f frontend-deployment.yaml'
+            bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f frontend-service.yaml'
+            bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f ingress.yaml'
         }
     }
+}
+
 
     post {
         success {
