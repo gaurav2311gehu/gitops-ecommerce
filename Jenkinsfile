@@ -49,7 +49,7 @@ pipeline {
         stage('Test Frontend') {
             steps {
                 dir('frontend') {
-                    bat 'npm test -- --watchAll=false'   // Jest tests, CI-friendly
+                    bat 'npm test'   // Jest tests, CI-friendly
                 }
             }
         }
@@ -67,7 +67,7 @@ pipeline {
         stage('Update ArgoCD Manifests') {
             steps {
                 // Agar argocd CLI Windows me path me hai
-                bat "argocd-image-updater --update"
+                bat "argocd app sync ecommerce-app --grpc-web"
             }
         }
         stage('Notify') {
