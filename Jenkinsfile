@@ -55,7 +55,7 @@ pipeline {
         // ---------------- Deploy to Minikube ----------------
         stage('Deploy to Minikube') {
             steps {
-                dir('k8s-manifests') { // GitHub repo me YAML files ka folder
+                dir('kubernetes') { // 👈 yahan sahi folder ka naam use kar
                     bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f namespace.yaml || echo Namespace already exists'
                     bat "kubectl --kubeconfig=%KUBECONFIG% apply -f backend-deployment.yaml"
                     bat "kubectl --kubeconfig=%KUBECONFIG% apply -f backend-service.yaml"
@@ -69,10 +69,10 @@ pipeline {
 
     post {
         success {
-            echo 'Great! CI/CD completed and deployed to Minikube!'
+            echo '✅ Great! CI/CD completed and deployed to Minikube!'
         }
         failure {
-            echo 'Pipeline failed! Check logs.'
+            echo '❌ Pipeline failed! Check logs.'
         }
     }
 }
