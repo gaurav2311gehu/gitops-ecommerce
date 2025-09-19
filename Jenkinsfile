@@ -69,7 +69,7 @@ pipeline {
 
     post {
         success {
-            echo 'CI/CD completed and deployed to Minikube!'
+            echo 'Great! CI/CD completed and deployed to Minikube!'
         }
         failure {
             echo 'Pipeline failed! Check logs.'
