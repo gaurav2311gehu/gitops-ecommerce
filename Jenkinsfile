@@ -56,7 +56,7 @@ pipeline {
         stage('Deploy to Minikube') {
             steps {
                 dir('k8s-manifests') { // GitHub repo me YAML files ka folder
-                    bat "kubectl --kubeconfig=%KUBECONFIG% apply -f namespace.yaml || echo Namespace already exists"
+                    bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f namespace.yaml || echo Namespace already exists'
                     bat "kubectl --kubeconfig=%KUBECONFIG% apply -f backend-deployment.yaml"
                     bat "kubectl --kubeconfig=%KUBECONFIG% apply -f backend-service.yaml"
                     bat "kubectl --kubeconfig=%KUBECONFIG% apply -f frontend-deployment.yaml"
