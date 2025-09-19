@@ -10,7 +10,8 @@ pipeline {
         // ---------------- Checkout ----------------
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/gaurav2311gehu/gitops-ecommerce.git'
+                git branch: 'main', url: 'https://github.com/gaurav2311gehu/gitops-ecommerce.git',
+                    credentialsId: 'github-token'
             }
         }
 
@@ -27,7 +28,9 @@ pipeline {
             steps {
                 dir('backend') {
                     withSonarQubeEnv('SonarQube') {
-                        bat 'mvn sonar:sonar'
+                        withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                            bat 'mvn sonar:sonar -Dsonar.login=%SONAR_TOKEN%'
+                        }
                     }
                 }
             }
@@ -36,8 +39,11 @@ pipeline {
         stage('Build & Push Backend Docker Image') {
             steps {
                 dir('backend') {
-                    bat "docker build -t %DOCKER_HUB%/%IMAGE_NAME_BACKEND%:latest ."
-                    bat "docker push %DOCKER_HUB%/%IMAGE_NAME_BACKEND%:latest"
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
+                        bat "docker build -t %DOCKER_HUB%/%IMAGE_NAME_BACKEND%:latest ."
+                        bat "docker push %DOCKER_HUB%/%IMAGE_NAME_BACKEND%:latest"
+                    }
                 }
             }
         }
@@ -54,7 +60,7 @@ pipeline {
         stage('Test Frontend') {
             steps {
                 dir('frontend') {
-                    bat 'npm test -- --watchAll=false' // CI-friendly Jest tests
+                    bat 'npm test -- --watchAll=false'
                 }
             }
         }
@@ -63,31 +69,12 @@ pipeline {
             steps {
                 dir('frontend') {
                     bat 'npm run build'
-                    bat "docker build -t %DOCKER_HUB%/%IMAGE_NAME_FRONTEND%:latest ."
-                    bat "docker push %DOCKER_HUB%/%IMAGE_NAME_FRONTEND%:latest"
-                }
-            }
-        }
-
-        // ---------------- GitOps Deploy ----------------
-        stage('Update ArgoCD Manifests') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'argocd-creds', usernameVariable: 'ARGOCD_USER', passwordVariable: 'ARGOCD_PASS')]) {
-                    // sirf host:port, bina http://
-                    withEnv(["ARGOCD_SERVER=192.168.49.2:30621"]) {
-                        bat """
-                            argocd login %ARGOCD_SERVER% --username %ARGOCD_USER% --password %ARGOCD_PASS% --grpc-web --insecure
-                            argocd app sync ecommerce-app --grpc-web
-                        """
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
+                        bat "docker build -t %DOCKER_HUB%/%IMAGE_NAME_FRONTEND%:latest ."
+                        bat "docker push %DOCKER_HUB%/%IMAGE_NAME_FRONTEND%:latest"
                     }
                 }
-            }
-        }
-
-        // ---------------- Notify ----------------
-        stage('Notify') {
-            steps {
-                echo 'Deployment Triggered via ArgoCD!'
             }
         }
     }
