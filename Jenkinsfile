@@ -19,7 +19,7 @@ pipeline {
         stage('Build & Test Backend') {
             steps {
                 dir('backend') {
-                    bat 'mvn clean verify' // compile + test + package
+                    bat 'mvn clean verify'
                 }
             }
         }
@@ -74,6 +74,25 @@ pipeline {
                         bat "docker build -t %DOCKER_HUB%/%IMAGE_NAME_FRONTEND%:latest ."
                         bat "docker push %DOCKER_HUB%/%IMAGE_NAME_FRONTEND%:latest"
                     }
+                }
+            }
+        }
+
+        // ---------------- GitOps / ArgoCD Deploy ----------------
+        stage('ArgoCD Deploy') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'argocd-creds', usernameVariable: 'ARGOCD_USER', passwordVariable: 'ARGOCD_PASS')]) {
+                    // Port-forward ArgoCD server if running locally (optional)
+                    bat 'start /B kubectl port-forward svc/argocd-server -n argocd 9090:443'
+                    bat 'timeout /t 5'
+
+                    // Login & Sync ArgoCD App
+                    bat """
+                        argocd login localhost:9090 --username %ARGOCD_USER% --password %ARGOCD_PASS% --grpc-web --insecure
+                        kubectl get namespace ecommerce || kubectl create namespace ecommerce
+                        argocd app sync ecommerce-app --grpc-web
+                        argocd app wait ecommerce-app --grpc-web --timeout 120
+                    """
                 }
             }
         }
