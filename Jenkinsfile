@@ -6,6 +6,8 @@ pipeline {
         IMAGE_NAME_FRONTEND = "ecommerce-frontend"
     }
     stages {
+
+        // ---------------- Checkout ----------------
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/gaurav2311gehu/gitops-ecommerce.git'
@@ -16,10 +18,11 @@ pipeline {
         stage('Build & Test Backend') {
             steps {
                 dir('backend') {
-                    bat 'mvn clean verify'   // verify = compile + test + package
+                    bat 'mvn clean verify' // compile + test + package
                 }
             }
         }
+
         stage('SonarQube Analysis') {
             steps {
                 dir('backend') {
@@ -29,6 +32,7 @@ pipeline {
                 }
             }
         }
+
         stage('Build & Push Backend Docker Image') {
             steps {
                 dir('backend') {
@@ -46,13 +50,15 @@ pipeline {
                 }
             }
         }
+
         stage('Test Frontend') {
             steps {
                 dir('frontend') {
-                    bat 'npm test -- --watchAll=false'   // Jest tests, CI-friendly
+                    bat 'npm test -- --watchAll=false' // CI-friendly Jest tests
                 }
             }
         }
+
         stage('Build & Push Frontend Docker Image') {
             steps {
                 dir('frontend') {
@@ -65,18 +71,18 @@ pipeline {
 
         // ---------------- GitOps Deploy ----------------
         stage('Update ArgoCD Manifests') {
-    steps {
-        withCredentials([usernamePassword(credentialsId: 'argocd-creds', usernameVariable: 'ARGOCD_USER', passwordVariable: 'ARGOCD_PASS')]) {
-            // sirf host:port, bina http://
-            withEnv(["ARGOCD_SERVER=192.168.49.2:30621"]) {
-                bat """
-                    argocd login %ARGOCD_SERVER% --username %ARGOCD_USER% --password %ARGOCD_PASS% --grpc-web --insecure
-                    argocd app sync ecommerce-app --grpc-web
-                """
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'argocd-creds', usernameVariable: 'ARGOCD_USER', passwordVariable: 'ARGOCD_PASS')]) {
+                    // sirf host:port, bina http://
+                    withEnv(["ARGOCD_SERVER=192.168.49.2:30621"]) {
+                        bat """
+                            argocd login %ARGOCD_SERVER% --username %ARGOCD_USER% --password %ARGOCD_PASS% --grpc-web --insecure
+                            argocd app sync ecommerce-app --grpc-web
+                        """
+                    }
+                }
             }
         }
-    }
-}
 
         // ---------------- Notify ----------------
         stage('Notify') {
