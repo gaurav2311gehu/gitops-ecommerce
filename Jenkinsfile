@@ -10,7 +10,8 @@ pipeline {
         // ---------------- Checkout ----------------
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/gaurav2311gehu/gitops-ecommerce.git',
+                git branch: 'main', 
+                    url: 'https://github.com/gaurav2311gehu/gitops-ecommerce.git',
                     credentialsId: 'github-token'
             }
         }
@@ -82,19 +83,37 @@ pipeline {
         stage('ArgoCD Deploy') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'argocd-creds', usernameVariable: 'ARGOCD_USER', passwordVariable: 'ARGOCD_PASS')]) {
-                    // Port-forward ArgoCD server if running locally (Windows-friendly)
-                    bat 'start /B kubectl port-forward svc/argocd-server -n argocd 9090:443'
-                    bat 'ping 127.0.0.1 -n 6 > nul'
 
-                    // Login & Sync ArgoCD App
+                    // Start port-forward in background (Windows)
+                    bat 'start /B kubectl port-forward svc/argocd-server -n argocd 9090:80'
+
+                    // Wait until ArgoCD server is ready
                     bat """
-                        argocd login localhost:9090 --username %ARGOCD_USER% --password %ARGOCD_PASS% --grpc-web --insecure
-                        kubectl get namespace ecommerce || kubectl create namespace ecommerce
-                        argocd app sync ecommerce-app --grpc-web
-                        argocd app wait ecommerce-app --grpc-web --timeout 120
+                    :waitloop
+                    ping 127.0.0.1 -n 2 > nul
+                    curl -k https://localhost:9090/api/v1/applications && goto ready
+                    goto waitloop
+                    :ready
+                    """
+
+                    // Login & sync
+                    bat """
+                    argocd login localhost:9090 --username %ARGOCD_USER% --password %ARGOCD_PASS% --grpc-web --insecure
+                    kubectl get namespace ecommerce || kubectl create namespace ecommerce
+                    argocd app sync ecommerce-app --grpc-web
+                    argocd app wait ecommerce-app --grpc-web --timeout 300
                     """
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ CI/CD Pipeline completed successfully!'
+        }
+        failure {
+            echo '❌ CI/CD Pipeline failed! Check logs for details.'
         }
     }
 }
