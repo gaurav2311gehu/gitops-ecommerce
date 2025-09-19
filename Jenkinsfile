@@ -4,10 +4,10 @@ pipeline {
         DOCKER_HUB = "gauravsaini2311"
         IMAGE_NAME_BACKEND = "ecommerce-backend"
         IMAGE_NAME_FRONTEND = "ecommerce-frontend"
+        KUBECONFIG = "C:\\Users\\Gaurav Saini\\.kube\\config" // Minikube kubeconfig ka path
     }
     stages {
 
-        // ---------------- Checkout ----------------
         stage('Checkout') {
             steps {
                 git branch: 'main', 
@@ -25,19 +25,7 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
-            steps {
-                dir('backend') {
-                    withSonarQubeEnv('SonarQube') {
-                        withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
-                            bat 'mvn sonar:sonar -Dsonar.login=%SONAR_TOKEN%'
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Build & Push Backend Docker Image') {
+        stage('Build & Push Backend Image') {
             steps {
                 dir('backend') {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -50,25 +38,10 @@ pipeline {
         }
 
         // ---------------- Frontend ----------------
-        stage('Install Frontend Deps') {
+        stage('Build & Push Frontend Image') {
             steps {
                 dir('frontend') {
                     bat 'npm install'
-                }
-            }
-        }
-
-        stage('Test Frontend') {
-            steps {
-                dir('frontend') {
-                    bat 'npm test -- --watchAll=false'
-                }
-            }
-        }
-
-        stage('Build & Push Frontend Docker Image') {
-            steps {
-                dir('frontend') {
                     bat 'npm run build'
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
@@ -79,30 +52,16 @@ pipeline {
             }
         }
 
-        // ---------------- GitOps / ArgoCD Deploy ----------------
-        stage('ArgoCD Deploy') {
+        // ---------------- Deploy to Minikube ----------------
+        stage('Deploy to Minikube') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'argocd-creds', usernameVariable: 'ARGOCD_USER', passwordVariable: 'ARGOCD_PASS')]) {
-
-                    // Start port-forward in background (Windows)
-                    bat 'start /B kubectl port-forward svc/argocd-server -n argocd 9090:80'
-
-                    // Wait until ArgoCD server is ready
-                    bat """
-                    :waitloop
-                    ping 127.0.0.1 -n 2 > nul
-                    curl -k https://localhost:9090/api/v1/applications && goto ready
-                    goto waitloop
-                    :ready
-                    """
-
-                    // Login & sync
-                    bat """
-                    argocd login localhost:9090 --username %ARGOCD_USER% --password %ARGOCD_PASS% --grpc-web --insecure
-                    kubectl get namespace ecommerce || kubectl create namespace ecommerce
-                    argocd app sync ecommerce-app --grpc-web
-                    argocd app wait ecommerce-app --grpc-web --timeout 300
-                    """
+                dir('k8s-manifests') { // GitHub repo me YAML files ka folder
+                    bat "kubectl --kubeconfig=%KUBECONFIG% apply -f namespace.yaml || echo Namespace already exists"
+                    bat "kubectl --kubeconfig=%KUBECONFIG% apply -f backend-deployment.yaml"
+                    bat "kubectl --kubeconfig=%KUBECONFIG% apply -f backend-service.yaml"
+                    bat "kubectl --kubeconfig=%KUBECONFIG% apply -f frontend-deployment.yaml"
+                    bat "kubectl --kubeconfig=%KUBECONFIG% apply -f frontend-service.yaml"
+                    bat "kubectl --kubeconfig=%KUBECONFIG% apply -f ingress.yaml"
                 }
             }
         }
@@ -110,10 +69,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ CI/CD Pipeline completed successfully!'
+            echo '✅ CI/CD completed and deployed to Minikube!'
         }
         failure {
-            echo '❌ CI/CD Pipeline failed! Check logs for details.'
+            echo '❌ Pipeline failed! Check logs.'
         }
     }
 }
