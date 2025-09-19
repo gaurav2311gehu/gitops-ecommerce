@@ -49,7 +49,7 @@ pipeline {
         stage('Test Frontend') {
             steps {
                 dir('frontend') {
-                    bat 'npm test'   // Jest tests, CI-friendly
+                    bat 'npm test -- --watchAll=false'   // Jest tests, CI-friendly
                 }
             }
         }
@@ -66,13 +66,20 @@ pipeline {
         // ---------------- GitOps Deploy ----------------
         stage('Update ArgoCD Manifests') {
             steps {
-                // Agar argocd CLI Windows me path me hai
-                bat "argocd app sync ecommerce-app --grpc-web"
+                withCredentials([usernamePassword(credentialsId: 'argocd-creds', usernameVariable: 'ARGOCD_USER', passwordVariable: 'ARGOCD_PASS')]) {
+                    withEnv(["ARGOCD_SERVER=argocd.example.com"]) {
+                        bat """
+                            argocd login %ARGOCD_SERVER% --username %ARGOCD_USER% --password %ARGOCD_PASS% --grpc-web --insecure
+                            argocd app sync ecommerce-app --grpc-web
+                        """
+                    }
+                }
             }
         }
+
         stage('Notify') {
             steps {
-                echo 'Deployment Triggered via ArgoCD!'
+                echo '✅ Deployment Triggered via ArgoCD!'
             }
         }
     }
