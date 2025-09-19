@@ -65,13 +65,22 @@ pipeline {
 
         // ---------------- GitOps Deploy ----------------
         stage('Update ArgoCD Manifests') {
-    steps {
-        withCredentials([usernamePassword(credentialsId: 'argocd-creds', usernameVariable: 'ARGOCD_USER', passwordVariable: 'ARGOCD_PASS')]) {
-            withEnv(["ARGOCD_SERVER=localhost:9090"]) {
-                bat """
-                    argocd login %ARGOCD_SERVER% --username %ARGOCD_USER% --password %ARGOCD_PASS% --grpc-web --insecure
-                    argocd app sync ecommerce-app --grpc-web
-                """
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'argocd-creds', usernameVariable: 'ARGOCD_USER', passwordVariable: 'ARGOCD_PASS')]) {
+                    withEnv(["ARGOCD_SERVER=localhost:9090"]) {
+                        bat """
+                            argocd login %ARGOCD_SERVER% --username %ARGOCD_USER% --password %ARGOCD_PASS% --grpc-web --insecure
+                            argocd app sync ecommerce-app --grpc-web
+                        """
+                    }
+                }
+            }
+        }
+
+        // ---------------- Notify ----------------
+        stage('Notify') {
+            steps {
+                echo '✅ Deployment Triggered via ArgoCD!'
             }
         }
     }
