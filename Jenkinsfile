@@ -6,11 +6,11 @@ pipeline {
         IMAGE_NAME_FRONTEND = "ecommerce-frontend"
         KUBECONFIG = "C:\\Users\\Gaurav Saini\\.kube\\config" // Minikube kubeconfig ka path
     }
-    stages {
 
+    stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', 
+                git branch: 'main',
                     url: 'https://github.com/gaurav2311gehu/gitops-ecommerce.git',
                     credentialsId: 'github-token'
             }
@@ -53,20 +53,19 @@ pipeline {
         }
 
         // ---------------- Deploy to Minikube ----------------
-        // ---------------- Deploy to Minikube ----------------
-stage('Deploy to Minikube') {
-    steps {
-        dir('kubernetes') {
-            bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f namespace.yaml || echo Namespace already exists'
-            bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f backend-deployment.yaml'
-            bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f backend-service.yaml'
-            bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f frontend-deployment.yaml'
-            bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f frontend-service.yaml'
-            bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f ingress.yaml'
+        stage('Deploy to Minikube') {
+            steps {
+                dir('kubernetes') {
+                    bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f namespace.yaml || echo Namespace already exists'
+                    bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f backend-deployment.yaml'
+                    bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f backend-service.yaml'
+                    bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f frontend-deployment.yaml'
+                    bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f frontend-service.yaml'
+                    bat 'kubectl --kubeconfig="%KUBECONFIG%" apply -f ingress.yaml'
+                }
+            }
         }
     }
-}
-
 
     post {
         success {
