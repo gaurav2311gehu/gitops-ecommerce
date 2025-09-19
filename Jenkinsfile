@@ -82,9 +82,9 @@ pipeline {
         stage('ArgoCD Deploy') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'argocd-creds', usernameVariable: 'ARGOCD_USER', passwordVariable: 'ARGOCD_PASS')]) {
-                    // Port-forward ArgoCD server if running locally (optional)
+                    // Port-forward ArgoCD server if running locally (Windows-friendly)
                     bat 'start /B kubectl port-forward svc/argocd-server -n argocd 9090:443'
-                    bat 'timeout /t 5'
+                    bat 'ping 127.0.0.1 -n 6 > nul'
 
                     // Login & Sync ArgoCD App
                     bat """
